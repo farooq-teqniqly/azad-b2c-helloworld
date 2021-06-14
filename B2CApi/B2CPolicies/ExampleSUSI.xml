@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TrustFrameworkPolicy
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06"
+	PolicySchemaVersion="0.3.0.0"
+	TenantId="farooqiefb2c.onmicrosoft.com"
+	PolicyId="B2C_1A_ExampleSUSI"
+	PublicPolicyUri="http://farooqiefb2c.onmicrosoft.com/B2C_1A_ExampleSUSI">
+
+	<BasePolicy>
+		<TenantId>farooqiefb2c.onmicrosoft.com</TenantId>
+		<PolicyId>B2C_1A_ExampleExtensions</PolicyId>
+	</BasePolicy>
+	<UserJourneys>
+		<UserJourney Id="HelloWorldJourney">
+			<OrchestrationSteps>
+				<!-- Present a sign-in page, with option to click sign up -->
+				<OrchestrationStep Order="1" Type="CombinedSignInAndSignUp" ContentDefinitionReferenceId="SignupOrSigninContentDefinition">
+					<ClaimsProviderSelections>
+						<ClaimsProviderSelection ValidationClaimsExchangeId="LocalAccountSigninEmailExchange" />
+					</ClaimsProviderSelections>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="LocalAccountSigninEmailExchange" TechnicalProfileReferenceId="UserSignInCollector" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- If the user is signing up (objectId does not exist), collect their information -->
+				<OrchestrationStep Order="2" Type="ClaimsExchange">
+					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+					</Preconditions>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="SignUpWithLogonEmailExchange" TechnicalProfileReferenceId="UserInformationCollector" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- If the user is signing up (objectId does not exist) and it is not a company account, collect and verify an access code -->
+				<OrchestrationStep Order="3" Type="ClaimsExchange">
+					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+						<Precondition Type="ClaimEquals" ExecuteActionsIf="true">
+							<Value>accountType</Value>
+							<Value>company</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+					</Preconditions>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="GetAccessCodeClaimsExchange" TechnicalProfileReferenceId="AccessCodeInputCollector" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- If the user is signing up (objectId does not exist) use the user's provided given name and surname to assemble their Display Name -->
+				<OrchestrationStep Order="4" Type="ClaimsExchange">
+					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+					</Preconditions>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="GenerateDisplayNameExchange" TechnicalProfileReferenceId="UserInputDisplayNameGenerator"/>
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- If the user is signing up (object Id does not exist), write their information to AAD -->
+				<OrchestrationStep Order="5" Type="ClaimsExchange">
+					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+					</Preconditions>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="AADUserWriterExchange" TechnicalProfileReferenceId="AADUserWriter"/>
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- Read the user's information from AAD -->
+				<OrchestrationStep Order="6" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="AADUserReaderExchange" TechnicalProfileReferenceId="AADUserReader"/>
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- Generate the greeting message -->
+				<OrchestrationStep Order="7" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="GetMessageClaimsExchange" TechnicalProfileReferenceId="UserInputMessageClaimGenerator"/>
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- Return the claims in a JWT token -->
+				<OrchestrationStep Order="8" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
+			</OrchestrationSteps>
+		</UserJourney>
+	</UserJourneys>
+	<RelyingParty>
+		<DefaultUserJourney ReferenceId="HelloWorldJourney"/>
+		<TechnicalProfile Id="HelloWorldPolicyProfile">
+			<DisplayName>Hello World Policy Profile</DisplayName>
+			<Protocol Name="OpenIdConnect" />
+			<OutputClaims>
+				<OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="sub" />
+				<OutputClaim ClaimTypeReferenceId="email"/>
+				<OutputClaim ClaimTypeReferenceId="displayName" />
+				<OutputClaim ClaimTypeReferenceId="givenName" />
+				<OutputClaim ClaimTypeReferenceId="surname" />
+				<OutputClaim ClaimTypeReferenceId="accountType"/>
+				<OutputClaim ClaimTypeReferenceId="message" />
+			</OutputClaims>
+			<SubjectNamingInfo ClaimType="sub" />
+		</TechnicalProfile>
+	</RelyingParty>
+</TrustFrameworkPolicy>
