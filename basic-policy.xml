@@ -124,6 +124,33 @@
 			<ClaimType Id="originalDisplayName">
 				<DataType>string</DataType>
 			</ClaimType>
+			<ClaimType Id="grant_type">
+				<DisplayName>grant_type</DisplayName>
+				<DataType>string</DataType>
+				<UserHelpText>Special parameter passed for local account authentication to login.microsoftonline.com.</UserHelpText>
+			</ClaimType>
+			<ClaimType Id="scope">
+				<DisplayName>scope</DisplayName>
+				<DataType>string</DataType>
+				<UserHelpText>Special parameter passed for local account authentication to login.microsoftonline.com.</UserHelpText>
+			</ClaimType>
+			<ClaimType Id="nca">
+				<DisplayName>nca</DisplayName>
+				<DataType>string</DataType>
+				<UserHelpText>Special parameter passed for local account authentication to login.microsoftonline.com.</UserHelpText>
+			</ClaimType>
+			<ClaimType Id="client_id">
+				<DisplayName>client_id</DisplayName>
+				<DataType>string</DataType>
+				<AdminHelpText>Special parameter passed to EvoSTS.</AdminHelpText>
+				<UserHelpText>Special parameter passed to EvoSTS.</UserHelpText>
+			</ClaimType>
+			<ClaimType Id="resource_id">
+				<DisplayName>resource_id</DisplayName>
+				<DataType>string</DataType>
+				<AdminHelpText>Special parameter passed to EvoSTS.</AdminHelpText>
+				<UserHelpText>Special parameter passed to EvoSTS.</UserHelpText>
+			</ClaimType>
 		</ClaimsSchema>
 		<Predicates>
 			<Predicate Id="DisallowedWhitespace" Method="MatchesRegex">
@@ -276,6 +303,14 @@
 				<RecoveryUri>~/common/default_page_error.html</RecoveryUri>
 				<DataUri>urn:com:microsoft:aad:b2c:elements:contract:selfasserted:1.2.0</DataUri>
 			</ContentDefinition>
+			<ContentDefinition Id="SignupOrSigninContentDefinition">
+				<LoadUri>~/tenant/default/unified.cshtml</LoadUri>
+				<RecoveryUri>~/common/default_page_error.html</RecoveryUri>
+				<DataUri>urn:com:microsoft:aad:b2c:elements:contract:unifiedssp:2.0.0</DataUri>
+				<Metadata>
+					<Item Key="DisplayName">Signin and Signup</Item>
+				</Metadata>
+			</ContentDefinition>
 		</ContentDefinitions>
 	</BuildingBlocks>
 	<ClaimsProviders>
@@ -319,15 +354,23 @@
 					<!--
   Generates the content of the message claim by applying the relevant claims transformation
   -->
+					<DisplayName>User Input Message Claim Generator Technical Profile</DisplayName>
+					<Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.ClaimsTransformationProtocolProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="message"/>
+					</OutputClaims>
+					<OutputClaimsTransformations>
+						<OutputClaimsTransformation ReferenceId="CreateMessageTransformation"/>
+					</OutputClaimsTransformations>
+				</TechnicalProfile>
+				<TechnicalProfile Id="UserInputDisplayNameGenerator">
 					<DisplayName>Display Name Claim Generator Technical Profile</DisplayName>
 					<Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.ClaimsTransformationProtocolProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
 					<OutputClaims>
 						<OutputClaim ClaimTypeReferenceId="displayName"/>
-						<OutputClaim ClaimTypeReferenceId="message"/>
 					</OutputClaims>
 					<OutputClaimsTransformations>
 						<OutputClaimsTransformation ReferenceId="CreateDisplayNameTransformation"/>
-						<OutputClaimsTransformation ReferenceId="CreateMessageTransformation"/>
 					</OutputClaimsTransformations>
 				</TechnicalProfile>
 				<TechnicalProfile Id="AccessCodeInputCollector">
@@ -517,6 +560,8 @@
 						<Item Key="Operation">Read</Item>
 						<Item Key="RaiseErrorIfClaimsPrincipalAlreadyExists">false</Item>
 						<Item Key="RaiseErrorIfClaimsPrincipalDoesNotExist">false</Item>
+						<Item Key="ApplicationObjectId">b12c5502-7448-4c6e-96a1-2599b47902b0</Item>
+						<Item Key="ClientId">b1a7530b-ea36-4f97-88db-f16746bcda8d</Item>
 					</Metadata>
 					<InputClaims>
 						<InputClaim ClaimTypeReferenceId="email" PartnerClaimType="signInNames.emailAddress" Required="true" />
@@ -524,7 +569,10 @@
 					<OutputClaims>
 						<OutputClaim ClaimTypeReferenceId="objectId"/>
 						<OutputClaim ClaimTypeReferenceId="userPrincipalName"/>
-						<OutputClaim ClaimTypeReferenceId="originalDisplayName" PartnerClaimType="displayName"/>
+						<OutputClaim ClaimTypeReferenceId="givenName"/>
+						<OutputClaim ClaimTypeReferenceId="surname"/>
+						<OutputClaim ClaimTypeReferenceId="displayName"/>
+						<OutputClaim ClaimTypeReferenceId="accountType" PartnerClaimType="extension_accountType"/>
 					</OutputClaims>
 				</TechnicalProfile>
 				<TechnicalProfile Id="AADUserUpdater">
@@ -556,17 +604,91 @@
 				</TechnicalProfile>
 			</TechnicalProfiles>
 		</ClaimsProvider>
+		<ClaimsProvider>
+			<DisplayName>OpenID Connect Technical Profiles</DisplayName>
+			<TechnicalProfiles>
+				<TechnicalProfile Id="LoginUser">
+					<DisplayName>Local Account SignIn</DisplayName>
+					<Protocol Name="OpenIdConnect" />
+					<Metadata>
+						<Item Key="UserMessageIfClaimsPrincipalDoesNotExist">We can't seem to find your account</Item>
+						<Item Key="UserMessageIfInvalidPassword">Your password is incorrect</Item>
+						<Item Key="UserMessageIfOldPasswordUsed">Looks like you used an old password</Item>
+						<Item Key="ProviderName">https://sts.windows.net/</Item>
+						<Item Key="METADATA">https://login.microsoftonline.com/farooqiefb2c.onmicrosoft.com/.well-known/openid-configuration</Item>
+						<Item Key="authorization_endpoint">https://login.microsoftonline.com/farooqiefb2c.onmicrosoft.com/oauth2/token</Item>
+						<Item Key="response_types">id_token</Item>
+						<Item Key="response_mode">query</Item>
+						<Item Key="scope">email openid</Item>
+						<!-- Policy Engine Clients -->
+						<Item Key="UsePolicyInRedirectUri">false</Item>
+						<Item Key="HttpBinding">POST</Item>
+						<Item Key="client_id">22b4c412-21d2-47b5-ab53-30e93216a10e</Item>
+						<Item Key="IdTokenAudience">532ceb94-879c-477b-af49-e268601e82c6</Item>
+					</Metadata>
+					<InputClaims>
+						<InputClaim ClaimTypeReferenceId="email" PartnerClaimType="username" Required="true" />
+						<InputClaim ClaimTypeReferenceId="password" PartnerClaimType="password" Required="true" />
+						<InputClaim ClaimTypeReferenceId="grant_type" DefaultValue="password" />
+						<InputClaim ClaimTypeReferenceId="scope" DefaultValue="openid" />
+						<InputClaim ClaimTypeReferenceId="nca" PartnerClaimType="nca" DefaultValue="1" />
+						<InputClaim ClaimTypeReferenceId="client_id" DefaultValue="22b4c412-21d2-47b5-ab53-30e93216a10e" />
+						<InputClaim ClaimTypeReferenceId="resource_id" PartnerClaimType="resource" DefaultValue="532ceb94-879c-477b-af49-e268601e82c6" />
+					</InputClaims>
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="oid" />
+					</OutputClaims>
+				</TechnicalProfile>
+				<TechnicalProfile Id="UserSignInCollector">
+					<DisplayName>Local Account Signin</DisplayName>
+					<Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<Metadata>
+						<Item Key="setting.operatingMode">Email</Item>
+						<Item Key="SignUpTarget">SignUpWithLogonEmailExchange</Item>
+					</Metadata>
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="email" Required="true" />
+						<OutputClaim ClaimTypeReferenceId="password" Required="true" />
+						<OutputClaim ClaimTypeReferenceId="objectId" />
+					</OutputClaims>
+					<ValidationTechnicalProfiles>
+						<ValidationTechnicalProfile ReferenceId="LoginUser" />
+					</ValidationTechnicalProfiles>
+				</TechnicalProfile>
+			</TechnicalProfiles>
+		</ClaimsProvider>
 	</ClaimsProviders>
 	<UserJourneys>
 		<UserJourney Id="HelloWorldJourney">
 			<OrchestrationSteps>
-				<OrchestrationStep Order="1" Type="ClaimsExchange">
+				<!-- Present a sign-in page, with option to click sign up -->
+				<OrchestrationStep Order="1" Type="CombinedSignInAndSignUp" ContentDefinitionReferenceId="SignupOrSigninContentDefinition">
+					<ClaimsProviderSelections>
+						<ClaimsProviderSelection ValidationClaimsExchangeId="LocalAccountSigninEmailExchange" />
+					</ClaimsProviderSelections>
 					<ClaimsExchanges>
-						<ClaimsExchange Id="GetUserInformationClaimsExchange" TechnicalProfileReferenceId="UserInformationCollector" />
+						<ClaimsExchange Id="LocalAccountSigninEmailExchange" TechnicalProfileReferenceId="UserSignInCollector" />
 					</ClaimsExchanges>
 				</OrchestrationStep>
+				<!-- If the user is signing up (objectId does not exist), collect their information -->
 				<OrchestrationStep Order="2" Type="ClaimsExchange">
 					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+					</Preconditions>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="SignUpWithLogonEmailExchange" TechnicalProfileReferenceId="UserInformationCollector" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- If the user is signing up (objectId does not exist) and it is not a company account, collect and verify an access code -->
+				<OrchestrationStep Order="3" Type="ClaimsExchange">
+					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
 						<Precondition Type="ClaimEquals" ExecuteActionsIf="true">
 							<Value>accountType</Value>
 							<Value>company</Value>
@@ -577,31 +699,23 @@
 						<ClaimsExchange Id="GetAccessCodeClaimsExchange" TechnicalProfileReferenceId="AccessCodeInputCollector" />
 					</ClaimsExchanges>
 				</OrchestrationStep>
-				<OrchestrationStep Order="3" Type="ClaimsExchange">
-					<ClaimsExchanges>
-						<ClaimsExchange Id="GetMessageClaimsExchange" TechnicalProfileReferenceId="UserInputMessageClaimGenerator"/>
-					</ClaimsExchanges>
-				</OrchestrationStep>
+				<!-- If the user is signing up (objectId does not exist) use the user's provided given name and surname to assemble their Display Name -->
 				<OrchestrationStep Order="4" Type="ClaimsExchange">
-					<ClaimsExchanges>
-						<ClaimsExchange Id="AADUserReaderExchange" TechnicalProfileReferenceId="AADUserReader"/>
-					</ClaimsExchanges>
-				</OrchestrationStep>
-				<OrchestrationStep Order="5" Type="ClaimsExchange">
 					<Preconditions>
-						<Precondition Type="ClaimsExist" ExecuteActionsIf="false">
-							<Value>userPrincipalName</Value>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
 							<Action>SkipThisOrchestrationStep</Action>
 						</Precondition>
 					</Preconditions>
 					<ClaimsExchanges>
-						<ClaimsExchange Id="AADUserUpdaterExchange" TechnicalProfileReferenceId="AADUserUpdater"/>
+						<ClaimsExchange Id="GenerateDisplayNameExchange" TechnicalProfileReferenceId="UserInputDisplayNameGenerator"/>
 					</ClaimsExchanges>
 				</OrchestrationStep>
-				<OrchestrationStep Order="6" Type="ClaimsExchange">
+				<!-- If the user is signing up (object Id does not exist), write their information to AAD -->
+				<OrchestrationStep Order="5" Type="ClaimsExchange">
 					<Preconditions>
 						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
-							<Value>userPrincipalName</Value>
+							<Value>objectId</Value>
 							<Action>SkipThisOrchestrationStep</Action>
 						</Precondition>
 					</Preconditions>
@@ -609,7 +723,20 @@
 						<ClaimsExchange Id="AADUserWriterExchange" TechnicalProfileReferenceId="AADUserWriter"/>
 					</ClaimsExchanges>
 				</OrchestrationStep>
-				<OrchestrationStep Order="7" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
+				<!-- Read the user's information from AAD -->
+				<OrchestrationStep Order="6" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="AADUserReaderExchange" TechnicalProfileReferenceId="AADUserReader"/>
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- Generate the greeting message -->
+				<OrchestrationStep Order="7" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="GetMessageClaimsExchange" TechnicalProfileReferenceId="UserInputMessageClaimGenerator"/>
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<!-- Return the claims in a JWT token -->
+				<OrchestrationStep Order="8" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
 			</OrchestrationSteps>
 		</UserJourney>
 	</UserJourneys>
@@ -620,15 +747,12 @@
 			<Protocol Name="OpenIdConnect" />
 			<OutputClaims>
 				<OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="sub" />
-				<OutputClaim ClaimTypeReferenceId="displayName" />
-				<OutputClaim ClaimTypeReferenceId="message" />
-				<OutputClaim ClaimTypeReferenceId="accountType"/>
 				<OutputClaim ClaimTypeReferenceId="email"/>
-				<OutputClaim ClaimTypeReferenceId="password"/>
-				<OutputClaim ClaimTypeReferenceId="domain"/>
-				<OutputClaim ClaimTypeReferenceId="domainStatus"/>
-				<OutputClaim ClaimTypeReferenceId="validDomains"/>
-				<OutputClaim ClaimTypeReferenceId="originalDisplayName" DefaultValue="Not previously set"/>
+				<OutputClaim ClaimTypeReferenceId="displayName" />
+				<OutputClaim ClaimTypeReferenceId="givenName" />
+				<OutputClaim ClaimTypeReferenceId="surname" />
+				<OutputClaim ClaimTypeReferenceId="accountType"/>
+				<OutputClaim ClaimTypeReferenceId="message" />
 			</OutputClaims>
 			<SubjectNamingInfo ClaimType="sub" />
 		</TechnicalProfile>
